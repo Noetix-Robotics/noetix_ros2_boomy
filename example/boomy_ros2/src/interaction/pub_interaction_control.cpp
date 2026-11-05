@@ -10,7 +10,7 @@ int main(int argc, char** argv) {
     boomy_interaction::msg::Header header;
     header.message_id          = 1001;
     header.timestamp_us        = 1710000000000000ULL;
-    header.sn                  = "BOOMY-SDK-SAMPLE";
+    header.sn                  = "";
     sample.header              = header;
     sample.type                = 0;
     sample.need_audio_response = true;

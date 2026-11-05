@@ -10,7 +10,7 @@ int main(int argc, char** argv) {
     boomy_interaction::msg::Header header;
     header.message_id    = 1001;
     header.timestamp_us  = 1710000000000000ULL;
-    header.sn            = "BOOMY-SDK-SAMPLE";
+    header.sn            = "";
     sample.header        = header;
     sample.common_config = R"({"timeout_without_conversation":60000,"default_language":"auto"})";
     return ros2_example::RunPub<T>(argc, argv, topic, sample);

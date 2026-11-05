@@ -32,6 +32,7 @@ payloads.
 | `interface/boomy_interaction` | ROS 2 messages for the interaction domain (10 messages) |
 | `interface/boomy_motion` | ROS 2 messages for the motion domain (10 messages) |
 | `example/boomy_ros2` | ROS 2 (rclcpp) publish/subscribe examples — 44 executables |
+| `config/dds.xml` | CycloneDDS configuration used by the examples at runtime |
 | `build.sh` | Top-level `colcon` build script |
 | `VERSION` | SDK version (`1.0.0`) |
 
@@ -44,11 +45,13 @@ noetix_ros2_boomy/
 ├── LICENSE                         # BSD 3-Clause
 ├── .clang-format                   # C++ formatting (LLVM based, 4 spaces)
 ├── .cmake-format.json              # CMake formatting
+├── config/
+│   └── dds.xml                     # CycloneDDS configuration (peers, transport)
 ├── interface/
 │   ├── boomy_interaction/          # 10 messages + CMakeLists.txt + package.xml
 │   │   ├── msg/
 │   │   └── CMakeLists.txt
-│   └── boomy_motion/               # 14 messages + CMakeLists.txt + package.xml
+│   └── boomy_motion/               # 10 messages + CMakeLists.txt + package.xml
 │       ├── msg/
 │       ├── README.md
 │       └── CMakeLists.txt
@@ -73,6 +76,40 @@ Build outputs (`build/`, `install/`, `log/`) are ignored by `.gitignore`.
 | C++17 compiler | |
 | Python 3 at `/usr/bin/python3` | The ROS 2 Python packages on the target are installed for that interpreter |
 | `colcon` | Ships with ROS 2 |
+
+## Environment setup
+
+Install ROS 2 Humble and the CycloneDDS RMW (Ubuntu 22.04):
+
+```bash
+# Add the ROS 2 apt repository
+curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+     -o /usr/share/keyrings/ros-archive-keyring.gpg
+
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
+http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" \
+     | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+
+# ROS 2 base + build tools + CycloneDDS RMW
+sudo apt update
+sudo apt install -y ros-humble-ros-base ros-humble-rmw-cyclonedds-cpp \
+    python3-colcon-common-extensions python3-rosdep
+sudo rosdep init 2>/dev/null; rosdep update
+```
+
+Add the ROS 2 environment and the DDS RMW to your shell profile:
+
+```bash
+echo 'source /opt/ros/humble/setup.bash'              >> ~/.bashrc
+echo 'export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp'   >> ~/.bashrc
+source /opt/ros/humble/setup.bash
+```
+
+After building, also source the workspace so the message types are found:
+
+```bash
+echo 'source /path/to/noetix_ros2_boomy/install/setup.bash' >> ~/.bashrc
+```
 
 ## Build
 
@@ -204,11 +241,29 @@ argument; the defaults are listed below.
 
 ## Motion control reference
 
+### `MotionSetMode.mode` values
+
+`MotionSetMode` selects how the robot is driven:
+
+| Value | Mode | Control interface |
+|---|---|---|
+| 1 | **High mode** | The robot runs its factory algorithm and action models; command it with `MotionControlCMD` |
+| 2 | **Low mode** | The factory algorithms are bypassed; drive all joint motors directly with `RobotMotorCommandArray` |
+
 ### `MotionControlCMD.action` values
 
 `MotionControlCMD` carries three axes (`float64[3] axes`), the `action` below,
-and a `uint16 data` field. The `action` field selects the mode or the
-factory-preset action to run.
+and a `uint16 data` field.
+
+Each axis is normalised to the range `[-1, 1]`:
+
+| Index | Meaning | Positive direction |
+|---|---|---|
+| `axes[0]` | Turning | `> 0` turns left |
+| `axes[1]` | Forward / backward | `> 0` moves forward |
+| `axes[2]` | Lateral translation | `> 0` strafes left |
+
+The `action` field selects the mode or the factory-preset action to run.
 
 | Value | Name | Description |
 |---|---|---|
@@ -409,6 +464,21 @@ This mechanism exists to:
 
 Protection logic is a low-level safety mechanism with the **highest
 priority**, and it is not affected by upper-layer control commands.
+
+## DDS runtime environment
+
+The examples talk to the robot over CycloneDDS. Configure the DDS environment
+before running them:
+
+```bash
+export CYCLONEDDS_URI=file:///$(pwd)/config/dds.xml
+export ROS_DOMAIN_ID=0
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+```
+
+`config/dds.xml` disables multicast and lists the robot as a peer — replace
+`192.168.55.102` in the `<Peer>` entry with the robot's actual address. Use
+`ROS_DOMAIN_ID` to isolate the robot from other DDS traffic on the same network.
 
 ## Examples
 
