@@ -19,8 +19,7 @@ interfaces, and ships a runnable publish/subscribe example for every topic.
   audio control, video streaming, video control, interaction state and errors,
   and general configuration.
 - **`boomy_motion`** — motion domain: motion control commands, mode switching,
-  motor commands, and robot status (IMU / joystick / BMS / motor states) plus
-  robot information.
+  motor commands, and robot status (IMU / joystick / BMS / motor states).
 
 The message set is kept layout-compatible with the robot's underlying DDS
 types, so a deployment can speak either ROS 2 or plain DDS with identical
@@ -31,7 +30,7 @@ payloads.
 | Path | Description |
 |---|---|
 | `interface/boomy_interaction` | ROS 2 messages for the interaction domain (10 messages) |
-| `interface/boomy_motion` | ROS 2 messages for the motion domain (14 messages present, 16 intended) |
+| `interface/boomy_motion` | ROS 2 messages for the motion domain (10 messages) |
 | `example/boomy_ros2` | ROS 2 (rclcpp) publish/subscribe examples — 44 executables |
 | `build.sh` | Top-level `colcon` build script |
 | `VERSION` | SDK version (`1.0.0`) |
@@ -135,7 +134,7 @@ packages on the target are installed for that interpreter.
 `2` AUDIO_WAKEUPED, `3` CMD_WAKEUPED, `4` AUDIO_SLEEPED, `5` CMD_SLEEPED,
 `6` TIMEOUT_SLEEPED, `7` ERROR_SLEEPED.
 
-### `boomy_motion` (16 messages intended)
+### `boomy_motion` (10 messages)
 
 Motion messages carry no shared `Header` — the underlying DDS types did not
 define one.
@@ -152,12 +151,6 @@ define one.
 | `RobotMotorStateArray` | `RobotMotorState[] motorstates`, `int64 timestamp` |
 | `RobotBMSState` | `uint16 battery_temp`, `uint16 battery_alarm`, `uint16 battery_soc`, `uint16 battery_soh` |
 | `RobotStatusData` | `RobotIMUData imudata`, `RobotJoyData joydata`, `RobotBMSState bmsdata`, `uint16 workmode`, `RobotMotorStateArray motorstatearray` |
-| `RobotVersion` | `string firmware_version`, `RobotSubVersion sub_version` *(see [Known issues](#known-issues))* |
-| `RobotSubVersion` | `string bootloader`, `string kernel`, `string rootfs`, `string robot_app`, `string robot_sdk`, `string robot_audio`, `string robot_cloud` *(see [Known issues](#known-issues))* |
-| `RobotInfoIMUData` | same IMU arrays as `RobotIMUData`, plus `uint32 imu_status` |
-| `RobotInfoMotorState` | `uint32 error`, `float64 temperature` |
-| `RobotInfoMotorStateArray` | `RobotInfoMotorState[] motorstates`, `int64 timestamp` |
-| `RobotInfoData` | `RobotVersion version`, `RobotBMSState bmsdata`, `RobotInfoIMUData imudata`, `uint16 workmode`, `RobotInfoMotorStateArray motorstatearray` |
 
 > Fixed-size arrays and nested structs are preserved exactly as the robot
 > defines them, so the on-the-wire binary layout matches the DDS types.
@@ -192,6 +185,214 @@ argument; the defaults are listed below.
 | motion | `/boomy/motion_set_mode` | `MotionSetMode` |
 | motion | `/boomy/motor_command` | `RobotMotorCommandArray` |
 | motion | `/boomy/robot_status_data` | `RobotStatusData` |
+
+## Motion control reference
+
+### `MotionControlCMD.action` values
+
+`MotionControlCMD` carries three axes (`float64[3] axes`), the `action` below,
+and a `uint16 data` field. The `action` field selects the mode or the
+factory-preset action to run.
+
+| Value | Name | Description |
+|---|---|---|
+| 0 | `WALK` | Walking Mode (half-body walking) |
+| 1 | `SWING` | Factory-preset action: Wave |
+| 2 | `SHAKE` | Factory-preset action: Handshake |
+| 3 | `CHEER` | Factory-preset action: Cheer |
+| 4 | `FULLWALK` | Full-body walking |
+| 5 | `START` | Enable / Disable |
+| 6 | `SWITCH` | Preparation Mode |
+| 7 | `STARTTEACH` | Start teaching |
+| 8 | `SAVETEACH` | Save teaching |
+| 9 | `ENDTEACH` | End teaching |
+| 10 | `PLAYTEACH` | Play demonstration |
+| 11 | `DANCE0` | Dance 1 mode (What Is Love) |
+| 12 | `FALLTOSTAND` | Stand up |
+| 13 | `STANDTOFALL` | Stow |
+| 14 | `DANCE1` | Dance 2 mode (Jueshi) |
+| 15 | `DANCE2` | Dance 3 mode (Gee) |
+| 16 | `ZHOUJI` | Elbow strike |
+| 17 | `DEFAULT` | Null mode (empty command) |
+
+### Action commands are edge-triggered
+
+Action-type commands are **events** and must be sent only once — not
+continuously inside the control loop. The robot runs its control function in a
+periodic loop, so re-publishing a one-shot action such as `PLAYTEACH`
+interrupts the action before it finishes and makes the robot appear stuck and
+unresponsive.
+
+Publish `DEFAULT` (17) on every subsequent loop iteration instead. Note that
+`MotionControlCMD.msg` defines **no named constants** — use the values from the
+table above:
+
+```cpp
+#include "boomy_motion/msg/motion_control_cmd.hpp"
+
+using MotionControlCMD = boomy_motion::msg::MotionControlCMD;
+
+constexpr int32_t kPlayTeach = 10;  // PLAYTEACH
+constexpr int32_t kDefault   = 17;  // DEFAULT
+
+auto publisher = node->create_publisher<MotionControlCMD>(
+    "/boomy/motion_control_cmd", 10);
+
+MotionControlCMD cmd;
+cmd.axes = {0.0, 0.0, 0.0};
+cmd.data = 0;
+
+static bool triggered = false;
+
+// Inside the periodic control loop:
+if (!triggered) {
+    cmd.action = kPlayTeach;  // trigger the demonstration once
+    triggered  = true;
+} else {
+    cmd.action = kDefault;    // empty command; do not re-trigger
+}
+publisher->publish(cmd);
+```
+
+The effect: `PLAYTEACH` starts the demonstration and lets it run to
+completion, while the following `DEFAULT` commands no longer interrupt it.
+
+### `START` — enable / disable
+
+Publishing `START` (5) toggles the robot's enabled state. What it does depends
+on the current mode read from `RobotStatusData.workmode` on
+`/boomy/robot_status_data`:
+
+- `workmode == 30` (Disabled Mode) → publishing `START` puts the robot into enabled mode
+- `workmode != 30` → publishing `START` immediately puts the robot into disabled mode
+
+```cpp
+MotionControlCMD cmd;
+cmd.axes   = {0.0, 0.0, 0.0};
+cmd.action = 5;  // START: enables when workmode == 30, otherwise disables
+cmd.data   = 0;
+publisher->publish(cmd);
+```
+
+### Mode state machine
+
+```text
+        power-on / motion control start
+                    │
+                    ▼
+  Enable Mode (0)  ⇄──── START (5) ────⇄  Disabled Mode (30)
+        │  ▲
+   SWITCH (6) │
+        ▼  │
+  Preparation Mode (1)
+        │ WALK (0)
+        ▼
+  Half-Body Walking Mode (2) ◀───────────────────────┐
+        │                                             │
+        ├── FULLWALK (4) ──▶ Full-Body Walking Mode (3)
+        │                                             │
+        ├── Full-body actions ────────────────────────┤
+        │   (dances, greeting, handshake,             │ on finish (auto)
+        │    cheer, elbow strike)                     │
+        │                                             │
+        └── Teaching flow ────────────────────────────┘
+            STARTTEACH (7) ──▶ PLAYTEACH (10) ─┬─ SAVETEACH (8) ──▶ save
+                                                │   (auto-return to walking)
+                                                └─ ENDTEACH (9)  ──▶ end
+                                                    (manual return to walking)
+
+  standup  (FALLTOSTAND, 12):
+      Disabled / lie-down  ──stand-up action flow──▶  Half-Body Walking Mode (2)
+
+  liedown  (STANDTOFALL, 13):
+      Half-Body Walking Mode (2)  ──lie-down action flow──▶  Disabled Mode (30)
+```
+
+### standup and liedown
+
+Two named transition flows sit on the boundary between disabled and walking
+modes:
+
+| Transition | Command | From | To |
+|---|---|---|---|
+| **standup** | `FALLTOSTAND` (12) | lie-down (Disabled Mode, 30) | Half-Body Walking Mode (2) |
+| **liedown** | `STANDTOFALL` (13) | Half-Body Walking Mode (2) | Disabled Mode (30) |
+
+- **standup** — from the lie-down state, the stand-up action flow brings the
+  robot into walking mode.
+- **liedown** — from walking mode, the lie-down action flow brings the robot
+  into disabled mode.
+
+Behaviour notes from the diagram:
+
+- After playing a demonstration (`PLAYTEACH`), you must **manually** return to
+  walking mode, otherwise the robot stays in the demonstration's final pose.
+- If you do not want to save the demonstrated motion, you must **manually**
+  return to walking mode.
+- After saving (`SAVETEACH`), the robot returns to walking mode
+  **automatically**.
+- After a full-body action finishes, the robot returns to half-body walking
+  mode **automatically**.
+
+### `RobotStatusData.workmode` values
+
+`RobotStatusData.workmode` reports the robot's current mode:
+
+| Value | Description |
+|---|---|
+| 0 | Enable Mode |
+| 1 | Preparation Mode |
+| 2 | Half-Body Walking Mode |
+| 3 | Full-Body Walking Mode |
+| 5 | Dance Mode 0 |
+| 8 | Factory Preset Action: Greeting |
+| 9 | Factory Default Action: Handshake |
+| 10 | Factory Default Action: Cheer |
+| 11 | Start Teaching |
+| 12 | End Teaching |
+| 13 | Play Demonstration |
+| 14 | Save Teaching |
+| 23 | Play Demonstration |
+| 26 | Protection Mode |
+| 27 | Get up from the ground |
+| 28 | Get up and fall to the ground |
+| 29 | Save Demonstrated Motion |
+| 30 | Disabled Mode |
+| 31 | Dance Mode 1 |
+| 32 | Dance Mode 2 |
+| 33 | Elbow Strike Motion |
+
+### Save teaching status sequence
+
+After the application publishes `SAVETEACH` (8) on
+`/boomy/motion_control_cmd`, the robot reports three statuses in succession
+through `RobotStatusData.workmode`: **Exit Teaching**, then **Save Teaching
+1**, then **Save Teaching 2**.
+
+### Protection Mode (workmode 26)
+
+When the robot is under a standing control strategy (walking, teaching,
+dancing, etc.), the motion control program continuously monitors IMU attitude
+data. If the attitude deviates from the stable standing range and exceeds the
+preset threshold, the protection mechanism triggers immediately and forces a
+switch to safe mode.
+
+In protection mode:
+
+- All joints enter the disabled state (the motors stop active output).
+- The current motion control strategy is terminated.
+- Further action commands are blocked from execution.
+
+This mechanism exists to:
+
+- Prevent the robot from continuously outputting control torque during a fall
+  or loss of stability.
+- Avoid secondary damage caused by uncontrolled swinging of the limbs.
+- Reduce potential damage to the device itself and the surrounding
+  environment.
+
+Protection logic is a low-level safety mechanism with the **highest
+priority**, and it is not affected by upper-layer control commands.
 
 ## Examples
 
@@ -228,12 +429,6 @@ Naming rule for the 44 executables in `boomy_ros2_examples`: `pub_<topic>` and
 
 ## Known issues
 
-- **`interface/boomy_motion/msg/RobotVersion.msg` and
-  `interface/boomy_motion/msg/RobotSubVersion.msg` are missing.** `RobotInfoData.msg`
-  references `RobotVersion`, and `interface/boomy_motion/README.md` lists both,
-  but they are absent from the repository and from the `MSG_FILES` list in
-  `interface/boomy_motion/CMakeLists.txt`. As a result `boomy_motion` (and
-  therefore the whole workspace) does **not** build until they are restored.
 - **License metadata is inconsistent.** `LICENSE` is BSD 3-Clause
   (Copyright © 2025 Noetix Robotis), but `boomy_interaction` and `boomy_motion`
   declare `<license>Proprietary</license>` while `boomy_ros2_examples` declares

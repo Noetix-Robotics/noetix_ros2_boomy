@@ -14,9 +14,6 @@ boomy_motion/
   msg/RobotIMUData.msg, RobotJoyData.msg, RobotMotorState.msg,
       RobotBMSState.msg, RobotMotorStateArray.msg, RobotStatusData.msg
   msg/RobotMotorCommand.msg, RobotMotorCommandArray.msg
-  msg/RobotSubVersion.msg, RobotVersion.msg
-  msg/RobotInfoIMUData.msg, RobotInfoMotorState.msg,
-      RobotInfoMotorStateArray.msg, RobotInfoData.msg
 ```
 
 ## DDS mapping
@@ -32,7 +29,6 @@ boomy_motion/
 | `RobotStatus::MotorStateArray` | `boomy_motion/msg/RobotMotorStateArray` |
 | `RobotStatus::StatusData` | `boomy_motion/msg/RobotStatusData` |
 | `RobotMotorCmd::MotorCmdArray` | `boomy_motion/msg/RobotMotorCommandArray` |
-| `RobotInfo::InfoData` | `boomy_motion/msg/RobotInfoData` |
 
 DDS fixed arrays and nested structs are preserved. Motion messages have no
 shared header; the DDS types did not define one.
@@ -51,7 +47,7 @@ schema_mode: ros2      # boomy_motion + ROS 2-derived DDS
 ## Build
 
 ```bash
-cd <boomy_sdk_ros2>
+cd <noetix_ros2_boomy>
 export ROS2_SETUP=/path/to/ros2/install/setup.bash
 source "$ROS2_SETUP"
 colcon build --packages-select boomy_motion

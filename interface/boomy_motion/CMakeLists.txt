@@ -15,9 +15,6 @@ set(MSG_FILES
     "msg/RobotStatusData.msg"
     "msg/RobotMotorCommand.msg"
     "msg/RobotMotorCommandArray.msg"
-    "msg/RobotInfoIMUData.msg"
-    "msg/RobotInfoMotorState.msg"
-    "msg/RobotInfoMotorStateArray.msg"
 )
 
 rosidl_generate_interfaces(${PROJECT_NAME} ${MSG_FILES})
