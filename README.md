@@ -134,6 +134,22 @@ packages on the target are installed for that interpreter.
 `2` AUDIO_WAKEUPED, `3` CMD_WAKEUPED, `4` AUDIO_SLEEPED, `5` CMD_SLEEPED,
 `6` TIMEOUT_SLEEPED, `7` ERROR_SLEEPED.
 
+### Stream formats
+
+Only one format is currently supported per stream direction.
+
+**Audio streams (`AudioStreamFrame`)** — `format` is `2` (little-endian,
+16-bit signed PCM):
+
+| Direction | Topics | `channels` | `sample_rate` | `format` |
+|---|---|---|---|---|
+| Capture (input) | `/boomy/audio_stream_external_capture`, `/boomy/audio_stream_internal_capture` | 8 | 16000 | 2 |
+| Playback (output) | `/boomy/audio_stream_external_playback`, `/boomy/audio_stream_internal_playback` | 2 | 16000 | 2 |
+
+**Video streams (`VideoStream`)** — only the **YUYV** format is supported, so
+`video_data` always carries YUYV frames; `width`, `height` and `fps` describe
+the frame layout.
+
 ### `boomy_motion` (10 messages)
 
 Motion messages carry no shared `Header` — the underlying DDS types did not
