@@ -427,15 +427,6 @@ ros2 interface show boomy_interaction/msg/AudioStreamFrame
 Naming rule for the 44 executables in `boomy_ros2_examples`: `pub_<topic>` and
 `sub_<topic>` for every row of the topic table above.
 
-## Known issues
-
-- **License metadata is inconsistent.** `LICENSE` is BSD 3-Clause
-  (Copyright © 2025 Noetix Robotis), but `boomy_interaction` and `boomy_motion`
-  declare `<license>Proprietary</license>` while `boomy_ros2_examples` declares
-  `Apache-2.0`. These should be aligned with the top-level `LICENSE`.
-- **Version mismatch.** `VERSION` says `1.0.0`, while every `package.xml` says
-  `0.1.0`.
-
 ## License
 
 BSD 3-Clause License. See [LICENSE](LICENSE) for the full text.
