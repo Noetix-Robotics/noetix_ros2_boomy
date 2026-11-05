@@ -1,0 +1,2 @@
+boomy_interaction/Header header
+string common_config

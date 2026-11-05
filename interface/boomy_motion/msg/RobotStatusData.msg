@@ -1,0 +1,5 @@
+boomy_motion/RobotIMUData imudata
+boomy_motion/RobotJoyData joydata
+boomy_motion/RobotBMSState bmsdata
+uint16 workmode
+boomy_motion/RobotMotorStateArray motorstatearray

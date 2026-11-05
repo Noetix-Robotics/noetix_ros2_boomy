@@ -1,0 +1,26 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/interface/**",
+                "${workspaceFolder}/install/**",
+                "${workspaceFolder}/example/boomy_ros2/src/**",
+                "${workspaceFolder}/example/boomy_rt_dds/src/**",
+                "${workspaceFolder}/example/boomy_rt_dds/idl/**",
+                "${workspaceFolder}/example/boomy_rt_dds/cyclonedds_cxx/include/**",
+                "${workspaceFolder}/example/boomy_rt_dds/cyclonedds_cxx/include/ddscxx/**",
+                "/opt/ros/humble/include/**",
+                "/usr/include",
+                "/usr/include/**"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/g++",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-gcc-arm64"
+        }
+    ],
+    "version": 4
+}

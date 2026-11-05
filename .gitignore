@@ -1,0 +1,13 @@
+# ROS 2 / colcon build output
+/build/
+/install/
+/log/
+/example/boomy_rt_dds/build/
+compile_commands.json
+.cache
+# Python cache
+__pycache__/
+*.py[cod]
+
+# OS/editor local files
+.DS_Store

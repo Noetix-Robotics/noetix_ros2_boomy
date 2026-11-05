@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>boomy_ros2_examples</name>
+  <version>0.1.0</version>
+  <description>Boomy ROS 2 pub/sub examples for boomy_interaction and boomy_motion.</description>
+  <maintainer email="dev@example.com">Boomy</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <depend>rclcpp</depend>
+  <depend>boomy_interaction</depend>
+  <depend>boomy_motion</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

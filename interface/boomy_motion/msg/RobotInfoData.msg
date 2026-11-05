@@ -1,0 +1,5 @@
+RobotVersion version
+RobotBMSState bmsdata
+RobotInfoIMUData imudata
+uint16 workmode
+RobotInfoMotorStateArray motorstatearray

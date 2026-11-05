@@ -1,0 +1,4 @@
+uint16 battery_temp
+uint16 battery_alarm
+uint16 battery_soc
+uint16 battery_soh

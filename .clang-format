@@ -1,0 +1,42 @@
+# LLVM 格式化风格配置
+BasedOnStyle: LLVM
+
+# 基本设置
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+
+# 行宽设置
+ColumnLimit: 0
+
+# 大括号样式
+BreakBeforeBraces: Attach
+
+# 访问修饰符后面的空行
+AccessModifierOffset: -4
+
+# 指针和引用的对齐方式
+PointerAlignment: Left
+
+# 函数声明中的参数对齐
+AlignAfterOpenBracket: Align
+
+# 连续行的对齐
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: false
+
+# 缩进 case 标签
+IndentCaseLabels: false
+
+# 每行一个参数的函数声明
+AllowAllParametersOfDeclarationOnNextLine: false
+
+# 允许短的if语句放在同一行
+AllowShortIfStatementsOnASingleLine: false
+
+# 允许短的循环放在同一行
+AllowShortLoopsOnASingleLine: false
+
+# 函数调用参数每个占一行
+BinPackArguments: false
+BinPackParameters: false
