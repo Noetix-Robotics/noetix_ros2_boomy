@@ -517,4 +517,4 @@ Naming rule for the 44 executables in `boomy_ros2_examples`: `pub_<topic>` and
 
 BSD 3-Clause License. See [LICENSE](LICENSE) for the full text.
 
-Copyright (c) 2025, Noetix Robotis.
+Copyright (c) 2026, Noetix Robotis.
